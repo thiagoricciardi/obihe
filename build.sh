@@ -111,6 +111,7 @@ fi
 
 # if check for commands
 _CMDs="make sha256sum tar wget $REQUIRE"
+[ "$MAJOR_VERSION" -ge "24" ] && _CMDs="$_CMDs zstd"
 _INSTALL=""
 for _cmd in $_CMDs ; do
 	command -v $_cmd > /dev/null
@@ -179,9 +180,18 @@ if [ -n "$BUILD_AFTER" ] ; then
 fi
 
 [ -z "$MIRROR" ] && MIRROR="https://downloads.openwrt.org"
+_EXT=".xz"
+[ "$MAJOR_VERSION" -ge "24" ] && _EXT=".zst"
 _VER="$VERSION-$TARGET-$SUB_TARGET"
 _IMGBLD="openwrt-imagebuilder-$_VER.Linux-x86_64"
-_URL="$MIRROR/releases/$VERSION/targets/$TARGET/$SUB_TARGET/$_IMGBLD.tar.xz"
+_URL="$MIRROR/releases/$VERSION/targets/$TARGET/$SUB_TARGET/$_IMGBLD.tar$_EXT"
+case "$_EXT" in
+	".bz")	_TAROPT="--bzip2"	; ;;
+	".xz")	_TAROPT="--xz"		; ;;
+	".gz")	_TAROPT="--gzip"	; ;;
+	".zst")	_TAROPT="--zstd"	; ;;
+	*)		_TAROPT=""			; ;;
+esac
 
 if ! wget -q --method="HEAD" "$_URL" ; then
 	echo "Version $_VER not found! Please check the if that version exists." ; echo "URL: $_URL"
@@ -213,6 +223,14 @@ elif [ -d "$FILES" ] ; then
 	tar -cvf - -C "$FILES" --exclude='.ipynb_checkpoints' "./*" | tar -xf - -C "$TMP_DIR/root/"
 else
 	echo "No aditional root files are being added."
+fi
+
+# copy package files if exists
+if [ -d "${_devdir}/packages" ] ; then
+	echo "Adding custom packages from \"${_devdir}/packages\"..."
+	tar -cvf - -C "${_devdir}" --exclude='.ipynb_checkpoints' "packages" | tar -xf - -C "$TMP_DIR/"
+else
+	echo "No custom packages are being added."
 fi
 
 # Add SSH keys to ROOT if needed
@@ -262,7 +280,7 @@ echo ; echo
 
 # download openwrt builder
 echo "Downloading $_IMGBLD"
-wget -qO- --show-progress "$_URL" | tar -xJ --directory $TMP_DIR/
+wget -qO- --show-progress "$_URL" | tar -x $_TAROPT --directory $TMP_DIR/
 
 echo "Configuring..."
 # enter the image directory
@@ -288,6 +306,9 @@ rm $_CFG_OUT 2> /dev/null
 
 # Set FILES if root exists
 [ -d "$TMP_DIR/root" ] && FILES="$TMP_DIR/root"
+
+# Copy packages if exists
+[ -d "$TMP_DIR/packages" ] && cp -av "$TMP_DIR/packages"/* "packages/"
 
 # Configure build variables
 [ -n "$FILES" ] && _FILES="FILES=\"$FILES\""

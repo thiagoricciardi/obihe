@@ -180,10 +180,11 @@ if [ -n "$BUILD_AFTER" ] ; then
 fi
 
 [ -z "$MIRROR" ] && MIRROR="https://downloads.openwrt.org"
+[ "$MAJOR_VERSION" -ge "18" ] && NAME="openwrt" || NAME="lede"
 _EXT=".xz"
 [ "$MAJOR_VERSION" -ge "24" ] && _EXT=".zst"
 _VER="$VERSION-$TARGET-$SUB_TARGET"
-_IMGBLD="openwrt-imagebuilder-$_VER.Linux-x86_64"
+_IMGBLD="$NAME-imagebuilder-$_VER.Linux-x86_64"
 _URL="$MIRROR/releases/$VERSION/targets/$TARGET/$SUB_TARGET/$_IMGBLD.tar$_EXT"
 case "$_EXT" in
 	".bz")	_TAROPT="--bzip2"	; ;;

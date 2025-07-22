@@ -1,0 +1,2 @@
+# This script will restart the wifi at 4:00 AM
+0 4 * * * /sbin/wifi reload

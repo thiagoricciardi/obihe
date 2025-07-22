@@ -1,92 +1,93 @@
-# OpenWRT Builder
+# OBiHe - OpenWrt Image Builder Helper
 
+This is OpenWrt Image Builder Helper, a simple tool to help build OpenWrt in a customized way using OpenWrt Image Builder.\
+With OBiHe, it's relatively easy to create persistent custom builds for multiple devices across many OpenWrt versions.
 
+## Installation
+
+This script uses OpenWrt ImageBuilder, so it has the same dependencies.\
+Please, be sure to follow the [Prerequisites](https://openwrt.org/docs/guide-user/additional-software/imagebuilder#prerequisites) section of the OpenWrt Image Builder documentation.
+
+With that done, there is nothing else to install, you only need to add your customization and run the script.\
+If there is something missing the script should inform you.
+
+## Compatibility
+
+This script should be compatible (but not extensively tested) with all OpenWrt releases from version 17.01 (LEDE) up to the latest version, including the release candidates, but not the snapshot version.
 
 ## Getting started
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+The simplest configuration that can be made is to create a device file and build it.\
+The most complex situation that it can handle now is to add custom root files, custom packages to the system and run pre/post-build functions automatically.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+### Device file configuration
 
-## Add your files
+The device file is a script include. It must be named `config` inside a device directory, but it can have any file name when alone.
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+The `PLATFORM` variable is mandatory. It's syntax is OpenWrt's TARGET/SUB_TARGET.\
+Platform examples: `x86/64` or `mediatek/filogic`\
+**[Tip]** It uses the same syntax as the [firmware selector](https://firmware-selector.openwrt.org/), use it to browse your device and copy it :wink:.
+
+The `PROFILE` variable should be configured when necessary.\
+Profile example: `openwrt_one`\
+**[Tip]** The firmware selector sets the profile as the `id` query string in the permalink.\
+e.g.: Selecting "OpenWrt One" as the device. Look at your browser's URL: ...?version=24.10.0&target=mediatek%2Ffilogic&id=**openwrt\_one**
+
+Another important configuration is the `PACKAGES` variable.\
+It should contain the OpenWrt packages to be embedded in the image.\
+The packages should be separated by whitespaces.\
+Packages example: `luci-ssl luci-app-opkg luci-app-wol`\
+See the [packages](https://openwrt.org/packages/start) in the OpenWrt website for more information.
+
+To get to know more about the configuration file, please check the `examples` directory of this repository.
+
+### The root device directory
+
+To use the root directory the device file must be named `config` inside a device directory tree and the root filesystem directory must be named `root`.\
+The root directory will be exactly what the name implies, the files inside it will be placed in the root (`/`) directory of the device just before packing the image.
+
+### The packages device directory
+
+Like in the root directory, to use the packages directory, the device file must be named `config` and be placed directly inside the device directory.\
+To add custom packages to the system, place custom `ipk` packages inside the `packages` device directory.
+
+### The full device directory structure (example)
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/ostegn/openwrt/builder.git
-git branch -M main
-git push -uf origin main
+devices/mydevice
+├── config » This is the device configuration file
+├── packages » Packages device directory
+│   ├── package1.ipk
+│   └── package2.ipk
+└── root » Root device directory
+    └── etc
+        ├── crontabs
+        │   └── root
+        ├── rc.local
+        └── uci-defaults
 ```
 
-## Integrate with your tools
+### Examples
 
-- [ ] [Set up project integrations](https://gitlab.com/ostegn/openwrt/builder/-/settings/integrations)
+There are some examples in the `examples` folder of this repository, please check them for a more practical approach.
 
-## Collaborate with your team
+### Run it
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+To run the script simply run the `build.sh` using the arguments.\
+The first argument points to the device file or directory and the second argument is the version you want to build.\
+The third argument is optional and it is the base URL to the OpenWrt mirror of your choice, if not supplied it uses the official OpenWrt download directory.
 
-## Test and Deploy
+Example:
+```
+./build.sh example/simple 23.05.5 https://mirrors.cicku.me/openwrt/
+```
 
-Use the built-in continuous integration in GitLab.
+OpenWrt mirrors can be found at https://openwrt.org/downloads#mirrors
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+### Output
 
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+The images will be under `./bin/<path/to/device>/` directory.
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+This tool is licensed under GPL-2.0

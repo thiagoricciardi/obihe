@@ -1,0 +1,107 @@
+# OpenWrt PXE (x86)
+
+# Set platform only if empty
+# This allows the creation of a script to compile multiple targets using only one configuration file
+[ -z "$PLATFORM" ] && PLATFORM="x86/generic"
+#PLATFORM="x86/64"
+
+# X86 does not have profiles, so no PROFILE variable
+
+VERSIONS="19 21 22 23 24"
+
+# --- Packages ---
+
+# Initialize packages
+PACKAGES=""
+
+# Luci basic
+if [ "$MAJOR_VERSION" -gt 19 ] ; then
+	PACKAGES="$PACKAGES luci-ssl-openssl"
+else
+	PACKAGES="$PACKAGES luci"
+fi
+# Remove some conflicting packages
+if [ "$MAJOR_VERSION" -ge 23 ] ; then
+PACKAGES="$PACKAGES -libustream-mbedtls"
+elif [ "$MAJOR_VERSION" -ge 21 ] ; then
+PACKAGES="$PACKAGES -libustream-wolfssl"
+fi
+
+# Replace ip with ip-full
+PACKAGES="$PACKAGES -ip -ip-tiny ip-full"
+
+# Additional packages
+PACKAGES="$PACKAGES iperf3 nano htop pciutils usbutils ethtool"
+
+# Drivers
+# Ethernet adapters
+PACKAGES="$PACKAGES kmod-3c59x kmod-8139cp kmod-8139too kmod-atl1 kmod-atl2 kmod-b44 kmod-bnx2 kmod-dm9000 kmod-e100 kmod-e1000 kmod-e1000e kmod-ethoc kmod-forcedeth kmod-igb kmod-igbvf kmod-ixgbe kmod-ixgbevf kmod-natsemi kmod-ne2k-pci kmod-pcnet32 kmod-r6040 kmod-r8169 kmod-sis190 kmod-sis900 kmod-sky2 kmod-tg3 kmod-usb-net kmod-usb-net-asix kmod-usb-net-asix-ax88179 kmod-usb-net-cdc-ether kmod-usb-net-cdc-subset kmod-usb-net-ipheth kmod-usb-net-kaweth kmod-usb-net-mcs7830 kmod-usb-net-pegasus kmod-usb-net-rtl8150 kmod-usb-net-rtl8152 kmod-usb-net-sr9700 kmod-via-rhine kmod-via-velocity kmod-vmxnet3"
+if [ "$MAJOR_VERSION" -ge 21 ] ; then
+	PACKAGES="$PACKAGES kmod-alx kmod-i40e kmod-iavf kmod-igc kmod-usb-net-aqc111"
+fi
+if [ "$MAJOR_VERSION" -ge 22 ] ; then
+	PACKAGES="$PACKAGES kmod-qlcnic kmod-usb-net-lan78xx"
+	if [ "$PLATFORM" = "x86/64" ] ; then
+		PACKAGES="$PACKAGES kmod-amd-xgbe"
+	fi
+fi
+#PACKAGES="$PACKAGES kmod-bgmac kmod-ixp4xx-eth kmod-usb-gadget-cdc-composite kmod-usb-gadget-eth"
+
+# --- end Packages ---
+
+# Partition sizes
+#KERNEL_PARTSIZE=64
+#ROOTFS_PARTSIZE=896
+
+# Import SSH keys (separate multiple users with space)
+# Format: PROTO:USER_ID (Protocol can be gh for GitHub or lp for Launchpad)
+#SSH_IMPORT_ID=""
+
+REQUIRE="fakeroot"
+BUILD_BEFORE="build_before"
+BUILD_AFTER="build_after"
+
+build_before() {
+	# Fix some configs
+	(grep --invert-match CONFIG_GRUB_TIMEOUT $_CFG_CFG ; echo CONFIG_GRUB_TIMEOUT=0) > $_CFG_OUT ; mv $_CFG_OUT $_CFG_CFG
+	(grep --invert-match CONFIG_GRUB_IMAGES $_CFG_CFG ; echo "# CONFIG_GRUB_IMAGES is not set") > $_CFG_OUT ; mv $_CFG_OUT $_CFG_CFG
+	(grep --invert-match CONFIG_GRUB_EFI_IMAGES $_CFG_CFG ; echo "# CONFIG_GRUB_EFI_IMAGES is not set") > $_CFG_OUT ; mv $_CFG_OUT $_CFG_CFG
+	(grep --invert-match CONFIG_TARGET_ROOTFS_TARGZ $_CFG_CFG ; echo CONFIG_TARGET_ROOTFS_TARGZ=y) > $_CFG_OUT ; mv $_CFG_OUT $_CFG_CFG
+	(grep --invert-match CONFIG_TARGET_ROOTFS_CPIOGZ $_CFG_CFG ; echo "# CONFIG_TARGET_ROOTFS_CPIOGZ is not set") > $_CFG_OUT ; mv $_CFG_OUT $_CFG_CFG
+	(grep --invert-match CONFIG_TARGET_ROOTFS_EXT4FS $_CFG_CFG ; echo "# CONFIG_TARGET_ROOTFS_EXT4FS is not set") > $_CFG_OUT ; mv $_CFG_OUT $_CFG_CFG
+	(grep --invert-match CONFIG_TARGET_ROOTFS_SQUASHFS $_CFG_CFG ; echo "# CONFIG_TARGET_ROOTFS_SQUASHFS is not set") > $_CFG_OUT ; mv $_CFG_OUT $_CFG_CFG
+	(grep --invert-match CONFIG_TARGET_IMAGES_GZIP $_CFG_CFG ; echo "# CONFIG_TARGET_IMAGES_GZIP is not set") > $_CFG_OUT ; mv $_CFG_OUT $_CFG_CFG
+	rm $_CFG_OUT 2> /dev/null
+}
+
+build_after() {
+	_rootfs="generic-rootfs.tar.gz"
+	_kernel="generic-kernel.bin"
+	if [ "$MAJOR_VERSION" -le 19 ] ; then
+		_kernel="vmlinuz"
+	fi
+	_init="target/linux/generic/other-files/init"
+	mv -v "$TMP_DIR/$_IMGBLD/bin/targets/$TARGET/$SUB_TARGET/$NAME-$VERSION-$TARGET-$SUB_TARGET-$_kernel" "$TMP_OUT/openwrt-$VERSION-$TARGET-$SUB_TARGET-kernel.bin"
+	mkdir -p "$TMP_DIR/cpio"
+	_currdir="$PWD"
+	cd "$TMP_DIR/cpio"
+	tar -xzf "$TMP_DIR/$_IMGBLD/bin/targets/$TARGET/$SUB_TARGET/$NAME-$VERSION-$TARGET-$SUB_TARGET-$_rootfs"
+	rm "$TMP_DIR/$_IMGBLD/bin/targets/$TARGET/$SUB_TARGET/$NAME-$VERSION-$TARGET-$SUB_TARGET-$_rootfs"
+	if [ -s "$TMP_DIR/$_IMGBLD/$_init" ] ; then
+		cp "$TMP_DIR/$_IMGBLD/$_init" ./init
+	else
+		cat << EOF > init
+#!/bin/sh
+# Copyright (C) 2006 OpenWrt.org
+export INITRAMFS=1
+/bin/mount -t tmpfs -o rw tmpfs /overlay
+exec /sbin/init
+EOF
+		touch --date="$(date -R -r bin)" init
+	fi
+	chmod +x init
+	find -print0 | fakeroot cpio --null --create --format=newc --quiet | gzip --best > "$TMP_OUT/openwrt-$VERSION-$TARGET-$SUB_TARGET-rootfs.cpio.gz"
+	cd "$_currdir"
+	rm -r "$TMP_DIR/cpio"
+	mv -v $TMP_DIR/$_IMGBLD/bin/targets/$TARGET/$SUB_TARGET/* $TMP_OUT/
+}

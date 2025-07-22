@@ -1,0 +1,54 @@
+wifi config
+
+get_radio_mode() {
+	RADIO="$@"
+	case "$(uci -q get wireless.${RADIO}.band)" in
+		2g)
+			echo "HT40" ;;
+		5g)
+			echo "VHT80" ;;
+		6g)
+			echo "HE80" ;;
+		60g)
+			echo "HE160" ;;
+		*)
+			echo "HT20" ;;
+	esac
+}
+
+for radio in $(uci show wireless | grep =wifi-device | cut -d'=' -f1 | cut -d'.' -f2) ; do
+	uci set wireless.${radio}.channel='auto'
+	uci set wireless.${radio}.htmode="$(get_radio_mode ${radio})"
+	uci set wireless.${radio}.country='BR'
+	uci del wireless.${radio}.disabled
+
+	uci del wireless.default_${radio}
+	uci set wireless.default_${radio}=wifi-iface
+	uci set wireless.default_${radio}.device="${radio}"
+	uci set wireless.default_${radio}.network='lan'
+	uci set wireless.default_${radio}.mode='ap'
+	uci set wireless.default_${radio}.wds='1'
+	uci set wireless.default_${radio}.ssid='MySSID'
+	uci set wireless.default_${radio}.key='mywifipasswd'
+	uci set wireless.default_${radio}.ieee80211r='1'
+	uci set wireless.default_${radio}.mobility_domain='064c'
+	uci set wireless.default_${radio}.reassociation_deadline='20480'
+	uci set wireless.default_${radio}.ft_over_ds='0'
+	uci set wireless.default_${radio}.ft_psk_generate_local='1'
+	uci set wireless.default_${radio}.doth='1'
+	uci set wireless.default_${radio}.ieee80211k='1'
+	uci set wireless.default_${radio}.wnm_sleep_mode='1'
+	uci set wireless.default_${radio}.encryption='psk2'
+	uci set wireless.default_${radio}.wnm_sleep_mode_no_keys='1'
+	uci set wireless.default_${radio}.bss_transition='1'
+	uci set wireless.default_${radio}.rsn_preauth='1'
+done
+
+commit wireless
+
+EOF
+
+wifi reload
+service network reload
+
+exit 0

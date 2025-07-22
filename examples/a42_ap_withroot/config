@@ -1,0 +1,66 @@
+# OpenMesh A42
+
+PLATFORM="ipq40xx/generic"
+PROFILE="openmesh_a42"
+
+VERSIONS="23 24"
+
+# Packages
+PACKAGES=""
+
+# Luci basic
+PACKAGES="$PACKAGES luci-app-opkg luci-base luci-mod-admin-full luci-mod-network luci-mod-status luci-mod-system luci-proto-ipv6 luci-theme-bootstrap uhttpd-mod-ubus rpcd-mod-rrdns"
+
+# Luci SSL - WolfSSL (Choose only one!)
+#PACKAGES="$PACKAGES px5g-wolfssl libustream-wolfssl -libustream-mbedtls"
+# Luci SSL - OpenSSL (Choose only one!)
+PACKAGES="$PACKAGES openssl-util libustream-openssl -libustream-mbedtls"
+# Luci SSL - MbedTLS (Choose only one!)
+#PACKAGES="$PACKAGES px5g-mbedtls"
+
+# Add collectd packages
+#PACKAGES="$PACKAGES collectd-mod-cpu collectd-mod-interface collectd-mod-iwinfo collectd-mod-load collectd-mod-memory collectd-mod-network"
+
+# Replace iw with iw-full
+PACKAGES="$PACKAGES -iw iw-full"
+
+# Remove default wpad
+PACKAGES="$PACKAGES -wpad-basic-wolfssl -wpad-basic-mbedtls"
+
+# Add wpad-full - WolfSSL (Choose only one!)
+#PACKAGES="$PACKAGES wpad-wolfssl"
+# Add wpad-full - OpenSSL (Choose only one!)
+PACKAGES="$PACKAGES wpad-openssl"
+# Add wpad-full - MbedTLS (Choose only one!)
+#PACKAGES="$PACKAGES wpad-mbedtls"
+
+# DAWN - Wifi Roaming
+#PACKAGES="$PACKAGES luci-app-dawn"
+
+# Use non-CT drivers (choose only one!)
+#PACKAGES="$PACKAGES -ath10k-firmware-qca4019-ct -kmod-ath10k-ct ath10k-firmware-qca4019 kmod-ath10k"
+# Use CT Drivers (choose only one!)
+#PACKAGES="$PACKAGES ath10k-firmware-qca4019-ct kmod-ath10k-ct"
+# Use CT HTT Drivers (choose only one!)
+PACKAGES="$PACKAGES -ath10k-firmware-qca4019-ct ath10k-firmware-qca4019-ct-htt kmod-ath10k-ct"
+
+# Additional packages
+PACKAGES="$PACKAGES iperf3 nano htop screen"
+
+# OpenWISP
+#PACKAGES="$PACKAGES luci-app-openwisp openwisp-monitoring"
+
+# Squeezelite
+PACKAGES="$PACKAGES squeezelite-full"
+
+$ ALSA Utils
+PACKAGES="$PACKAGES alsa-utils"
+
+# USB Driver
+PACKAGES="$PACKAGES kmod-usb2"
+
+# Audio drivers
+PACKAGES="$PACKAGES kmod-usb-audio"
+
+# Remove router
+PACKAGES="$PACKAGES -dnsmasq -firewall -firewall4 -ip6tables -iptables -nftables -nftables-json -odhcpd-ipv6only -ppp -ppp-mod-pppoe -kmod-ipt-offload -kmod-nft-offload"

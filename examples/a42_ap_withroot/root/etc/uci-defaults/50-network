@@ -1,0 +1,47 @@
+
+wan_if="$(uci get network.wan.device)"
+lan_if="$(uci get network.lan.device)"
+lan_conf="$(uci show network | grep name=\'${lan_if}\' | cut -d'.' -f1-2)"
+
+if [ "$(uci get ${lan_conf}.type)" == "bridge" ] ; then
+	br_if="$lan_if"
+	br_conf="$lan_conf"
+	lan_if="$(uci get ${lan_conf}.ports | cut -d' ' -f1)"
+	lan_conf="$(uci show network | grep name=\'${lan_if}\' | cut -d'.' -f1-2)"
+else
+	# find the bridge or create one
+	br_conf="$(uci show network | grep type=\'bridge\' | cut -d'.' -f1-2 | head -n1)"
+	br_if="$(uci -q get ${br_conf}.name)"
+	if [ -z "$br_if" ] ; then
+		br_conf="network.$(uci add network device)"
+		br_if="br-lan"
+		uci set ${br_conf}.name="$br_if"
+		uci set ${br_conf}.type='bridge'
+		uci add_list ${br_conf}.ports="$lan_if"
+	fi
+fi
+
+uci -q batch << EOF
+
+del network.wan
+del network.wan6
+
+add_list ${br_conf}.ports="$wan_if"
+
+del network.lan
+set network.lan=interface
+set network.lan.device="$br_if"
+set network.lan.proto='dhcp'
+
+del network.lan6
+set network.lan6=interface
+set network.lan6.proto='dhcpv6'
+set network.lan6.device='@lan'
+
+commit network
+
+EOF
+
+service network reload
+
+exit 0

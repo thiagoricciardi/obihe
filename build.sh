@@ -17,15 +17,11 @@ MIRROR="$3"
 _my_dir="$( cd "$( [ -z "$BASH_SOURCE" ] && dirname "$0" || dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 # Output directory
-OUT_DIR="$_my_dir/bin/$DEVICE"
+[ -z "${OUT_DIR}" ] && OUT_DIR="${_my_dir}/bin/${DEVICE}"
 # Temporary directory
-TMP_DIR="/tmp/openwrt"
+[ -z "${TMP_DIR}" ] && TMP_DIR="$(mktemp --directory)"
 # Temporary output
-TMP_OUT="$TMP_DIR/out"
-
-# RAM disk size used in compilation (empty to do not create)
-# This will use the temporary directory as RAM disk
-RAMDISK_SIZE="10G"
+[ -z "${TMP_OUT}" ] && TMP_OUT="${TMP_DIR}/out"
 
 # Get major version
 MAJOR_VERSION=$(echo $VERSION | cut -d'.' -f1)
@@ -46,14 +42,27 @@ show_usage() {
 }
 err_exit() {
 	_err="$1"
-	[ -z "_err" ] && _err=1
-	echo ; echo "Build failed!"
+	[ -z "${_err}" ] && _err=1
+	[ "${_err}" -ne "0" ] && ( echo ; echo "Build failed!" )
 	exit $_err
 }
 isFunction() { type "$@" > /dev/null ; }
 directoryEmpty() { [ -z "$(ls -A "$@")" > /dev/null ] ; }
+toBytes() { echo $(($(echo "$1" | sed 's/E/ << 10 P/i;s/P/ << 10 T/i;s/T/ << 10 G/i;s/G/ << 10 M/i;s/M/ << 10 K/i;s/K/ << 10/i'))) ; }
 
 # --- Initial checks ---
+
+# RAM disk size used in compilation (define empty to do not create)
+# defaults to 10G if more than 10G are available
+# This will use the temporary directory as RAM disk
+_mem_free="$(awk '/MemAvailable/ { gsub(/[Bb]/,"",$3)  ; print $2$3 }' /proc/meminfo)"
+[ -z "${_mem_free}" ] && _mem_free="$(awk '/MemFree/ { gsub(/[Bb]/,"",$3)  ; print $2$3 }' /proc/meminfo)"
+[ -z "${RAMDISK_SIZE+x}" ] && RAMDISK_SIZE="10G"
+# Disable RAM disk if there is not enough memory
+if [ "$(toBytes ${_mem_free})" -lt "$(toBytes ${RAMDISK_SIZE})" ] ; then
+	echo_warning "Not enough free memory for a ${RAMDISK_SIZE} RAM disk, disabling it."
+	RAMDISK_SIZE=""
+fi
 
 # If device or version is empty
 if [ -z "$DEVICE" -o -z "$VERSION" ] ; then

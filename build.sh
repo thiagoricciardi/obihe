@@ -60,7 +60,7 @@ _mem_free="$(awk '/MemAvailable/ { gsub(/[Bb]/,"",$3)  ; print $2$3 }' /proc/mem
 [ -z "${RAMDISK_SIZE+x}" ] && RAMDISK_SIZE="10G"
 # Disable RAM disk if there is not enough memory
 if [ "$(toBytes ${_mem_free})" -lt "$(toBytes ${RAMDISK_SIZE})" ] ; then
-	echo_warning "Not enough free memory for a ${RAMDISK_SIZE} RAM disk, disabling it."
+	echo "Not enough free memory for a ${RAMDISK_SIZE} RAM disk, disabling it."
 	RAMDISK_SIZE=""
 fi
 
